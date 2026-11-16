@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>captcha-am · treinar templates</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="success-toast" class="success-toast" role="status" aria-live="polite">
+    <span class="success-toast-icon" aria-hidden="true">&#10003;</span>
+    <span id="success-toast-message"></span>
+  </div>
+
+  <main>
+    <h1>captcha-am — treinar templates</h1>
+    <p class="subtitle">
+      Envie um captcha cuja resposta certa você já conhece para alimentar o
+      classificador (<code>POST /templates</code>). Veja o <code>README.md</code>
+      para a documentação via curl.
+    </p>
+
+    <form id="form">
+      <section id="dropzone" class="dropzone">
+        <p id="dropzone-hint">Arraste uma imagem aqui, cole (Ctrl+V) ou</p>
+        <button type="button" id="pick-btn">Escolher arquivo</button>
+        <input type="file" id="file-input" accept="image/*" hidden>
+        <img id="preview" alt="Pré-visualização" hidden>
+      </section>
+
+      <label class="field">
+        <span>Texto correto <span class="required">*</span></span>
+        <input type="text" id="text-input" name="text" placeholder="ex.: ab3d" required autocomplete="off">
+      </label>
+
+      <section id="mask-section" class="mask-section" hidden>
+        <p class="mask-label">
+          Máscara isolada — clique entre as letras para marcar os cortes
+        </p>
+        <p class="mask-hint">
+          Essa imagem (diferente da pré-visualização acima) é o que a API usa por
+          dentro; os <code>cuts</code> precisam ser coordenadas <em>dela</em>, não da
+          imagem original — por isso os cliques aqui já calculam o número certo.
+        </p>
+        <div id="mask-scroll" class="mask-scroll">
+          <div id="mask-stack" class="mask-stack">
+            <img id="mask-image" alt="Máscara isolada do captcha">
+            <canvas id="mask-canvas"></canvas>
+          </div>
+        </div>
+        <p id="mask-error" class="mask-error" hidden></p>
+        <div class="mask-controls">
+          <span id="cuts-counter" class="cuts-counter">0/0 cortes marcados</span>
+          <button type="button" id="clear-cuts-btn">Limpar cortes</button>
+        </div>
+      </section>
+
+      <label class="field">
+        <span>Cuts (opcional)</span>
+        <input type="text" id="cuts-input" name="cuts" placeholder="ex.: 90,180,270" autocomplete="off">
+        <small>
+          Pontos de corte entre caracteres (um a menos que o tamanho do texto),
+          nas coordenadas da máscara isolada. Só é necessário na primeira vez que
+          um caractere nunca visto aparece — a API recusa com HTTP 422 pedindo
+          isso explicitamente; deixe em branco na maioria das vezes, ou clique na
+          máscara acima em vez de digitar os números.
+        </small>
+      </label>
+
+      <button type="submit" id="submit-btn" disabled>Enviar amostra</button>
+    </form>
+
+    <div id="result" class="result" hidden></div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
