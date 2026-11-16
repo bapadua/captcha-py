@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>captcha-am · manual do projeto</title>
+  <meta name="description" content="Manual do captcha-am: API que resolve captchas de texto distorcido usando um classificador por caractere, sem OCR genérico.">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="#top">
+        <span class="brand-mark" aria-hidden="true"></span>
+        captcha-am
+      </a>
+      <button id="nav-toggle" class="nav-toggle" aria-expanded="false" aria-controls="nav-links">
+        <span></span><span></span><span></span>
+      </button>
+      <nav id="nav-links" class="nav-links">
+        <a href="#visao-geral">Visão geral</a>
+        <a href="#como-funciona">Como funciona</a>
+        <a href="#setup">Setup</a>
+        <a href="#api">API</a>
+        <a href="#treinamento">Treinamento</a>
+        <a href="#testes">Testes</a>
+        <a href="#limitacoes">Limitações</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="hero-inner">
+        <p class="eyebrow">Manual do projeto</p>
+        <h1>Resolvendo captchas distorcidos <span class="gradient-text">sem OCR genérico</span></h1>
+        <p class="hero-lead">
+          <code>captcha-am</code> é uma API em Python/FastAPI que recebe a imagem de um captcha
+          de texto (letras coloridas sobre ruído, cortadas por uma linha diagonal) e devolve o
+          texto reconhecido — comparando cada caractere contra templates extraídos à mão, em vez
+          de depender de reconhecimento genérico de fonte.
+        </p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="#setup">Começar agora</a>
+          <a class="btn btn-ghost" href="#api">Ver a API</a>
+        </div>
+        <ul class="badges">
+          <li class="badge">Python 3.9+</li>
+          <li class="badge">FastAPI</li>
+          <li class="badge">OpenCV + NumPy</li>
+          <li class="badge">Sem build step</li>
+          <li class="badge">Sem Tesseract</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="visao-geral" class="section">
+      <h2><span class="num">01</span> Visão geral</h2>
+      <div class="prose">
+        <p>
+          O captcha alvo tem letras azuis sobre um fundo com ruído na mesma cor, cortadas por uma
+          linha diagonal escura. A primeira tentativa foi um OCR genérico (Tesseract) — acertou
+          só 1 das 3 amostras conhecidas. O motivo: nessa fonte as letras às vezes se tocam sem
+          nenhum "vale" de tinta entre elas, então qualquer abordagem que suponha fronteiras
+          óbvias entre caracteres tende a errar a segmentação antes mesmo de tentar reconhecer.
+        </p>
+        <p>
+          A solução trocou OCR genérico por um <strong>classificador por caractere</strong>: cada
+          pedaço candidato da imagem é comparado contra templates já conhecidos de cada letra, e a
+          divisão em caracteres é escolhida <em>junto</em> com o reconhecimento — por programação
+          dinâmica, testando onde cortar e escolhendo a combinação de cortes cujos pedaços mais se
+          parecem com algum template, em vez de adivinhar a fronteira primeiro.
+        </p>
+      </div>
+      <div class="callout">
+        O código do OCR genérico continua em <code>app/ocr.py</code> /
+        <code>app/preprocessing.py</code> como referência histórica, mas não é mais usado pela API.
+      </div>
+    </section>
+
+    <section id="como-funciona" class="section section-alt">
+      <h2><span class="num">02</span> Como funciona o pipeline</h2>
+      <ol class="timeline">
+        <li class="timeline-step">
+          <span class="step-index">1</span>
+          <div>
+            <h3>Isolar por cor</h3>
+            <p>
+              A máscara de glifos é extraída filtrando a cor específica das letras — a linha
+              diagonal e o ruído de fundo, por terem outra tonalidade, ficam de fora do filtro.
+            </p>
+          </div>
+        </li>
+        <li class="timeline-step">
+          <span class="step-index">2</span>
+          <div>
+            <h3>Limpar resíduos</h3>
+            <p>
+              Pequenos resíduos que sobram do filtro de cor são removidos, deixando só os traços
+              que de fato formam os caracteres.
+            </p>
+          </div>
+        </li>
+        <li class="timeline-step">
+          <span class="step-index">3</span>
+          <div>
+            <h3>Segmentar + classificar (DP)</h3>
+            <p>
+              Em vez de cortar primeiro e reconhecer depois, uma busca por programação dinâmica
+              testa onde cortar a máscara e, para cada corte candidato, compara o pedaço contra os
+              templates de cada caractere — escolhendo a divisão cujos pedaços mais se parecem com
+              algo já conhecido.
+            </p>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <section id="setup" class="section">
+      <h2><span class="num">03</span> Setup</h2>
+      <p class="section-lead">Sem Tesseract instalado no sistema — só seria necessário para usar <code>app/ocr.py</code> diretamente.</p>
+      <div class="code-grid">
+        <div class="code-card">
+          <div class="code-card-head">
+            <span>Linux</span>
+          </div>
+          <pre><code>python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+.venv/bin/uvicorn app.main:app --reload</code></pre>
+        </div>
+        <div class="code-card">
+          <div class="code-card-head">
+            <span>Windows</span>
+          </div>
+          <pre><code>python -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
+.venv\Scripts\uvicorn app.main:app --reload</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="api" class="section section-alt">
+      <h2><span class="num">04</span> API</h2>
+      <div class="api-grid">
+        <article class="api-card">
+          <header><span class="method get">GET</span><code>/health</code></header>
+          <p>Checagem de disponibilidade.</p>
+        </article>
+
+        <article class="api-card">
+          <header><span class="method post">POST</span><code>/solve</code></header>
+          <p>
+            Recebe a imagem (<code>multipart/form-data</code>, campo <code>file</code>) e um
+            campo opcional <code>length</code> (quantidade de caracteres, padrão <code>4</code>).
+            Devolve <code>{"text": "..."}</code>.
+          </p>
+          <pre><code>curl -F "file=@a.png" http://localhost:8000/solve</code></pre>
+        </article>
+
+        <article class="api-card">
+          <header><span class="method post">POST</span><code>/mask-preview</code></header>
+          <p>
+            Devolve a máscara isolada (a mesma usada por <code>/solve</code> e
+            <code>/templates</code> por dentro) como PNG. Existe só para a UI de treinamento
+            marcar cortes nas coordenadas certas.
+          </p>
+        </article>
+
+        <article class="api-card">
+          <header><span class="method post">POST</span><code>/templates</code></header>
+          <p>
+            Treinamento incremental: você já sabe o texto certo de um captcha e quer que o
+            classificador aprenda com ele. Recebe <code>file</code> e <code>text</code>, devolve
+            os caracteres adicionados.
+          </p>
+          <p class="warn">Muda o estado do classificador para todo mundo que usa a API — não deixe exposto publicamente sem proteção.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="treinamento" class="section">
+      <h2><span class="num">05</span> Treinando com novas amostras</h2>
+      <p class="section-lead">Três formas de ensinar o classificador a partir de um captcha cuja resposta certa você já sabe.</p>
+
+      <div class="train-card">
+        <h3>Em tempo real, via API</h3>
+        <p>
+          Só funciona com segurança se <strong>todo</strong> caractere de <code>text</code> já
+          tiver pelo menos 1 template cadastrado. Se algum caractere for totalmente novo, a API
+          recusa com <code>HTTP 422</code> e pede os cortes manuais:
+        </p>
+        <pre><code>curl -F "file=@novo.png" -F "text=ab3d" http://localhost:8000/templates
+
+# com um caractere nunca visto, informe os cortes (coordenadas da máscara isolada)
+curl -F "file=@novo.png" -F "text=ab3d" -F "cuts=90,180,270" http://localhost:8000/templates</code></pre>
+      </div>
+
+      <div class="train-card">
+        <h3>Pela interface web</h3>
+        <p>
+          Com a API rodando, <code>http://localhost:8000/</code> serve uma página simples
+          (HTML/CSS/JS puro, sem framework) para fazer a mesma coisa sem montar curl à mão:
+          arraste a imagem, cole um print ou escolha o arquivo, veja a máscara isolada e clique
+          entre as letras para marcar os cortes — o campo <code>cuts</code> é preenchido
+          automaticamente.
+        </p>
+        <p class="hint">Essa página depende do backend rodando localmente; o GitHub Pages aqui serve só este manual estático.</p>
+      </div>
+
+      <div class="train-card">
+        <h3>Em lote, editando o código</h3>
+        <p>
+          Reconstrói <code>app/templates.npz</code> do zero a partir de
+          <code>app/known_samples.py</code> — ao contrário do endpoint, que só adiciona:
+        </p>
+        <pre><code>.venv/bin/python scripts/build_templates.py</code></pre>
+      </div>
+    </section>
+
+    <section id="testes" class="section section-alt">
+      <h2><span class="num">06</span> Testes</h2>
+      <pre><code>.venv/bin/pytest tests/ -v</code></pre>
+      <p>Os testes rodam o pipeline direto contra as 3 imagens de amostra (<code>a.png</code>, <code>b.png</code>, <code>c.png</code>) e comparam com o texto esperado.</p>
+    </section>
+
+    <section id="limitacoes" class="section">
+      <h2><span class="num">07</span> Limitações conhecidas</h2>
+      <p class="section-lead">
+        O classificador acerta as 3 amostras disponíveis, mas isso testa contra as mesmas imagens
+        de onde vieram os templates — não é validação contra captchas nunca vistos.
+      </p>
+      <ul class="check-list">
+        <li><strong>Tamanho do captcha:</strong> a API assume 4 caracteres por padrão (<code>length=4</code>); ajuste por requisição se variar.</li>
+        <li><strong>Letras com um só exemplo:</strong> cada caractere aparece só 1 ou 2 vezes nos templates — letras parecidas entre si (ex.: <code>m</code> vs. <code>n</code>) tendem a ser confundidas até existirem mais exemplos rotulados, que é exatamente para isso que serve o <code>POST /templates</code>.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>captcha-am — manual gerado a partir do README do projeto.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
